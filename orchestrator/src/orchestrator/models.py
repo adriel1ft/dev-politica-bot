@@ -1,6 +1,9 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+from sqlalchemy import Column, String, Integer, Boolean, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+import datetime
 
 
 class IncomingMessageRequest(BaseModel):

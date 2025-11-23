@@ -5,14 +5,17 @@ from typing import Optional, Dict, List
 from pymongo import MongoClient
 import json
 
+
 from ..config import settings
 from ..models_db import SessionDB
 from .user_service import UserService
 from .audio_service import AudioService
 from .agent_service import AgentService
 from .message_buffer_service import MessageBufferService, BufferedMessage
+from .location_service import LocationService
 
 logger = logging.getLogger(__name__)
+
 
 
 class MessageService:
@@ -25,6 +28,7 @@ class MessageService:
         self.user_service = UserService()
         self.audio_service = AudioService()
         self.agent_service = AgentService()
+        self.location_service = LocationService()
         
         # Inicializar buffer de mensagens
         self.buffer_service = MessageBufferService(
@@ -111,6 +115,38 @@ class MessageService:
             combined_text = await self._combine_messages(user_id, messages)
             logger.info(f"📝 Mensagens combinadas ({len(combined_text)} chars)")
             
+            # 3.5. VERIFICAR E PROCESSAR LOCALIZAÇÃO
+            # Se usuário não tem localização, tentar extrair das mensagens
+            if not user.cidade or not user.estado:
+                logger.info("📍 Usuário sem localização cadastrada, tentando extrair do texto...")
+                location_info = await self.location_service.extract_location_from_text(
+                    text=combined_text,
+                    cidade=user.cidade,
+                    estado=user.estado,
+                    cep=user.cep
+                )
+                
+                if location_info.get("cidade") and location_info.get("estado"):
+                    # Atualizar localização do usuário
+                    await self.user_service.update_user_location(
+                        user_id=user_id,
+                        cidade=location_info["cidade"],
+                        estado=location_info["estado"],
+                        cep=location_info.get("cep"),
+                        bairro=location_info.get("bairro"),
+                        logradouro=location_info.get("logradouro")
+                    )
+                    logger.info(f"✅ Localização atualizada: {location_info['cidade']}/{location_info['estado']}")
+                    
+                    # Se não conseguiu extrair, pedir ao usuário
+                    if not location_info.get("cidade"):
+                        await self._send_location_request(user_id)
+                        return
+                else:
+                    # Pedir localização explicitamente
+                    await self._send_location_request(user_id)
+                    return
+            
             # 4. Chamar agente com texto combinado
             logger.info("🤖 Enviando para agente...")
             agent_response = await self.agent_service.process_message(
@@ -119,7 +155,10 @@ class MessageService:
                 session_id=session_id,
                 user_preferences={
                     "prefer_audio": user.prefer_audio,
-                    "topics": user.topics_of_interest
+                    "topics": user.topics_of_interest,
+                    "cidade": user.cidade,
+                    "estado": user.estado,
+                    "cep": user.cep
                 }
             )
             
@@ -267,3 +306,26 @@ class MessageService:
         }
         await self._send_to_whatsapp(error_message)
         return error_message
+    
+    async def _send_location_request(self, user_id: str) -> None:
+        """Solicita informações de localização ao usuário"""
+        logger.info(f"📍 Solicitando localização para usuário {user_id}")
+        
+        location_message = {
+            "chatId": user_id,
+            "message": (
+                "Olá! Para poder te ajudar melhor, preciso saber sua localização. 📍\n\n"
+                "Por favor, me informe:\n"
+                "• Em qual *cidade* você mora?\n"
+                "• Em qual *estado*?\n"
+                "• Se possível, o *CEP* da sua região\n\n"
+                "Exemplo: _\"Moro em São José dos Campos, São Paulo, CEP 12345-678\"_\n\n"
+                "Ou se preferir, pode mencionar uma referência local (bairro, comunidade, etc) "
+                "que eu tento descobrir o CEP para você! 😊"
+            ),
+            "mediaUrl": None,
+            "mimeType": None,
+            "auxiliaryText": None
+        }
+        
+        await self._send_to_whatsapp(location_message)

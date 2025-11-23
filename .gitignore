@@ -1,9 +1,23 @@
+# Environment variables
+.env
+.env.*
+!.env.example
 .env.global
+
+# Python
 __pycache__/
 venv/
 .venv/
 *.pyc
+
+# System files
 .DS_Store
+
+# Node
 node_modules/
+
+# WhatsApp Web
 .wwebjs*
+
+# LocalStack
 localstack/

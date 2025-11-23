@@ -29,7 +29,12 @@ class UserService:
                 name=user_doc.get("name"),
                 age=user_doc.get("age"),
                 location=user_doc.get("location"),
-                prefer_audio=user_doc.get("prefer_audio", False)
+                prefer_audio=user_doc.get("prefer_audio", False),
+                cidade=user_doc.get("cidade"),
+                estado=user_doc.get("estado"),
+                cep=user_doc.get("cep"),
+                bairro=user_doc.get("bairro"),
+                logradouro=user_doc.get("logradouro")
             )
         
         logger.info(f"🆕 Novo usuário: {user_id}")
@@ -44,7 +49,10 @@ class UserService:
         age: Optional[int] = None,
         location: Optional[str] = None,
         topics: Optional[list] = None,
-        prefer_audio: Optional[bool] = None
+        prefer_audio: Optional[bool] = None,
+        cidade: Optional[str] = None,
+        estado: Optional[str] = None,
+        cep: Optional[str] = None
     ) -> UserDB:
         """Atualiza perfil do usuário"""
         update_data = {
@@ -61,6 +69,12 @@ class UserService:
             update_data["topics_of_interest"] = topics
         if prefer_audio is not None:
             update_data["prefer_audio"] = prefer_audio
+        if cidade:
+            update_data["cidade"] = cidade
+        if estado:
+            update_data["estado"] = estado
+        if cep:
+            update_data["cep"] = cep
         
         self.users_collection.update_one(
             {"user_id": user_id},
@@ -74,3 +88,39 @@ class UserService:
         """Obtém preferência de áudio do usuário"""
         user = await self.get_or_create_user(user_id)
         return user.prefer_audio
+    
+    async def update_user_location(
+        self,
+        user_id: str,
+        cidade: str,
+        estado: str,
+        cep: Optional[str] = None,
+        bairro: Optional[str] = None,
+        logradouro: Optional[str] = None
+    ) -> UserDB:
+        """Atualiza localização do usuário"""
+        update_data = {
+            "updated_at": datetime.utcnow(),
+            "cidade": cidade,
+            "estado": estado
+        }
+        
+        if cep:
+            update_data["cep"] = cep
+        if bairro:
+            update_data["bairro"] = bairro
+        if logradouro:
+            update_data["logradouro"] = logradouro
+        
+        self.users_collection.update_one(
+            {"user_id": user_id},
+            {"$set": update_data}
+        )
+        
+        logger.info(f"📍 Localização atualizada: {user_id} -> {cidade}/{estado} ({cep or 'sem CEP'})")
+        return await self.get_or_create_user(user_id)
+    
+    async def check_user_has_location(self, user_id: str) -> bool:
+        """Verifica se usuário tem localização cadastrada"""
+        user = await self.get_or_create_user(user_id)
+        return bool(user.cidade and user.estado)

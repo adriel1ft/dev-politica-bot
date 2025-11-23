@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # OpenAI (para TTS e Whisper)
     openai_api_key: str = ""
     openai_tts_model: str = "tts-1"
-    openai_tts_voice: str = "alloy"
+    openai_tts_voice: str = "shimmer"
     openai_whisper_model: str = "whisper-1"
 
     # AWS S3 / LocalStack

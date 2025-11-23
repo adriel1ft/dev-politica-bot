@@ -24,6 +24,7 @@ class MessageType(str, Enum):
     """Tipos de mensagem suportados"""
     CHAT = "chat"
     PTT = "ptt"
+    AUDIO = "audio"
     IMAGE = "image"
     VIDEO = "video"
     DOCUMENT = "document"

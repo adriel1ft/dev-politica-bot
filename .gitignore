@@ -1,4 +1,5 @@
 .env.global
+.env
 __pycache__/
 venv/
 .venv/

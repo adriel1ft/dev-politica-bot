@@ -28,7 +28,7 @@ class AgentResponse(BaseModel):
     session_id: str
     user_id: str
     response_text: str
-    auxiliary_text: Optional[str] = None
+    auxiliary_text: str
     should_send_audio: bool = False
     timestamp: datetime = Field(default_factory=datetime.now)
 

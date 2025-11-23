@@ -118,6 +118,12 @@ class AgentService:
                 logger.warning("⚠️  Usando agente sem ferramentas MCP")
                 response_output = await self.agent.arun(input=prompt)
             
+            logger.info("📥 Resposta recebida do agente")
+            try:
+                logger.info(f"Resposta completa: {response_output.content.auxiliary_text}")
+            except Exception:
+                pass
+
             # Extrair texto da resposta
             response_text = self._extract_response_text(response_output)
 
@@ -190,7 +196,8 @@ What you should do:
    - A resposta principal (`response_text`) deve ter até 1200 caracteres (ideal: ~800).
    - Use linguagem oral, fluída e expositiva, com explicações simples e exemplos se necessário.
    - **Não inclua links, emojis ou caracteres especiais**. 
-   - O campo `auxiliary_text` pode conter observações extras ou complementares, caso precise.
+   - O campo `auxiliary_text` deve conter observações extras ou complementares, caso precise. Também
+   pode ser usado para destacar pontos importantes, fornecer contexto adicional ou incluir links.
 - Se for **texto** (`should_send_audio = false`):
    - A resposta principal (`response_text`) deve conter mais informações, explicações adicionais e, se necessário, links úteis para fontes confiáveis (e-Cidadania, Câmara dos Deputados etc).
    - O `auxiliary_text` pode ser omitido ou usado para contextualizar ou destacar pontos relevantes.
@@ -243,7 +250,7 @@ Context:
         Returns:
             Texto auxiliar ou None
         """
-        if "content" in dir(response_output):
+        if hasattr(response_output, 'content'):
             content = response_output.content
             if hasattr(content, 'auxiliary_text'):
                 return content.auxiliary_text

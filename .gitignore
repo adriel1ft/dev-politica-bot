@@ -1,4 +1,4 @@
-.env
+.env.global
 __pycache__/
 venv/
 .venv/
@@ -6,3 +6,4 @@ venv/
 .DS_Store
 node_modules/
 .wwebjs*
+localstack/

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     mcp_server_version: str = "0.1.0"
     
     # Scraping
-    scraping_timeout: int = 30
+    scraping_timeout: int = 60
     scraping_headless: bool = True
     
     # Cache

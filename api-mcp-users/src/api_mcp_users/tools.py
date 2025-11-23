@@ -166,3 +166,44 @@ async def listar_topicos_interesse() -> Dict[str, List[str]]:
         "Tecnologia e Inovação"
     ]
     return {"topicos_disponiveis": topicos}
+
+async def registrar_opiniao(
+    user_id: str,
+    texto: str,
+    topicos: List[str],
+    sentimento: str
+) -> Dict[str, Any]:
+    """
+    Registra a opinião do usuário sobre temas legislativos
+    
+    Args:
+        user_id: ID do usuário
+        texto: Texto da opinião
+        topicos: Tópicos relacionados
+        sentimento: Sentimento associado (positivo, negativo, neutro)
+        
+    Returns:
+        Confirmação de registro da opinião
+    """
+    try:
+        opinion = {
+            "opinion_id": str(datetime.utcnow().timestamp()).replace('.', ''),
+            "user_id": user_id,
+            "texto": texto,
+            "topicos": topicos,
+            "sentimento": sentimento,
+            "created_at": datetime.utcnow()
+        }
+        db["opinions"].insert_one(opinion)
+        
+        logger.info(f"🗣️ Opinião registrada: {opinion['opinion_id']} para usuário {user_id}")
+        
+        return {
+            "opinion_id": opinion["opinion_id"],
+            "user_id": user_id,
+            "status": "registrada",
+            "created_at": str(opinion["created_at"])
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao registrar opinião: {e}")
+        raise

@@ -27,4 +27,4 @@ dev = [
 ]
 
 [project.scripts]
-api-agents = "api_agents_whatsapp.main:main"
+api-agents-whatsapp = "api_agents_whatsapp.main:main"

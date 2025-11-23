@@ -2,16 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Orchestrator",
+      "name": "api-agents-whatsapp",
       "type": "python",
       "request": "launch",
-      "module": "orchestrator.main",
+      "module": "api_agents_whatsapp.main",
       "args": [],
       "jinja": true,
       "justMyCode": true,
-      "cwd": "${workspaceFolder}/orchestrator/src/",
+      "cwd": "${workspaceFolder}/api-agents-whatsapp/src/",
+      "python": "${workspaceFolder}/api-agents-whatsapp/.venv/bin/python",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}/orchestrator/src/"
+        "PYTHONPATH": "${workspaceFolder}/api-agents-whatsapp/src"
       }
     }
   ]

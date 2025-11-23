@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Orchestrator",
+      "type": "python",
+      "request": "launch",
+      "module": "orchestrator.main",
+      "args": [],
+      "jinja": true,
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/orchestrator/src/",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/orchestrator/src/"
+      }
+    }
+  ]
+}

@@ -108,7 +108,8 @@ class AgentService:
                         api_key=settings.openai_api_key,
                     ),
                     tools=[tool for tool in mcp_tools_list],
-                    markdown=True
+                    markdown=True,
+                    output_schema=AgentResponse
                 )
                 logger.info("📤 Enviando prompt para agente...")
                 response_output = await agent_with_tools.arun(input=prompt)
@@ -119,6 +120,8 @@ class AgentService:
             
             # Extrair texto da resposta
             response_text = self._extract_response_text(response_output)
+
+            auxiliary_text = self._extract_auxiliary_text(response_output)
             
             logger.info(f"✅ Resposta recebida: {response_text[:80]}...")
             
@@ -130,7 +133,7 @@ class AgentService:
                 session_id=request.session_id,
                 user_id=request.user_id,
                 response_text=response_text,
-                auxiliary_text=self._get_auxiliary_text(should_send_audio),
+                auxiliary_text=auxiliary_text,
                 should_send_audio=should_send_audio,
                 timestamp=datetime.now(),
             )
@@ -160,19 +163,10 @@ class AgentService:
         # Tentar diferentes atributos comuns
         if hasattr(response_output, 'content'):
             text = response_output.content
-        elif hasattr(response_output, 'message'):
-            text = response_output.message
-        elif hasattr(response_output, 'text'):
-            text = response_output.text
+            return text.response_text if hasattr(text, 'response_text') else text
         elif isinstance(response_output, dict):
-            text = response_output.get('content') or response_output.get('message') or str(response_output)
-        elif isinstance(response_output, str):
-            text = response_output
-        else:
-            text = str(response_output)
-        
-        # Garantir que não retorna None
-        return text.strip() if text else "Desculpe, não consegui processar sua mensagem no momento."
+            return response_output.get('response_text', '')
+        return str(response_output)
     
     def _build_prompt(self, request: AgentRequest) -> str:
         """
@@ -184,8 +178,37 @@ class AgentService:
         Returns:
             Prompt formatado para o agente
         """
-        base_prompt = f"""Você é um assistente especializado em legislação brasileira e projetos de lei do Congresso Nacional.
+        base_prompt = f"""
+Your Role: Especialista em legislação brasileira, com foco em traduzir temas complexos do Congresso Nacional para linguagem simples e acessível.
 
+Short basic instruction: Responda perguntas sobre projetos de lei ou temas que impactam comunidades, adaptando a linguagem para pessoas com menor escolaridade.
+
+What you should do:
+- Analise a pergunta do usuário, que pode ser sobre um projeto de lei específico ou sobre um tema que afeta sua comunidade.
+- Responda com linguagem simples, clara e acessível, adaptando o tom e o nível de detalhe ao tipo de resposta (áudio ou texto).
+- Se for **áudio** (`should_send_audio = true`):
+   - A resposta principal (`response_text`) deve ter até 1200 caracteres (ideal: ~800).
+   - Use linguagem oral, fluída e expositiva, com explicações simples e exemplos se necessário.
+   - **Não inclua links, emojis ou caracteres especiais**. 
+   - O campo `auxiliary_text` pode conter observações extras ou complementares, caso precise.
+- Se for **texto** (`should_send_audio = false`):
+   - A resposta principal (`response_text`) deve conter mais informações, explicações adicionais e, se necessário, links úteis para fontes confiáveis (e-Cidadania, Câmara dos Deputados etc).
+   - O `auxiliary_text` pode ser omitido ou usado para contextualizar ou destacar pontos relevantes.
+
+Your Goal: Facilitar o entendimento de temas legislativos, aproximando o cidadão do Congresso Nacional, usando uma linguagem que respeite o nível de instrução do público.
+
+Constraint:
+- Em áudio: até 1200 caracteres, tom expositivo e acessível.
+- Em texto: mais completo e informativo.
+- Sem jargões técnicos. Use exemplos e explique termos difíceis.
+- Links e fontes só quando realmente agregarem.
+
+Context:
+- O público é formado por cidadãos de diferentes regiões, muitos com baixa escolaridade.
+- As perguntas podem ser sobre projetos de lei específicos ou temas que afetam diretamente a comunidade (mesmo que a relação com a lei não seja clara).
+- O atendimento é feito via WhatsApp.
+"""
+        additional_prompt = f"""
 📋 CONTEXTO DA MENSAGEM:
 - Tipo: {request.message_type}
 - Usuário: {request.user_id}
@@ -193,20 +216,9 @@ class AgentService:
 
 💬 MENSAGEM DO USUÁRIO:
 {request.user_message}
-
-📋 INSTRUÇÕES PARA RESPOSTA:
-1. Use as ferramentas MCP disponíveis para buscar informações atualizadas sobre projetos de lei
-2. Responda de forma clara, objetiva e acessível (evite jargão técnico excessivo)
-3. Estruture a resposta com:
-   - Resposta direta à pergunta
-   - Contexto e background relevante
-   - Links úteis quando apropriado (e-Cidadania, Câmara dos Deputados)
-4. Se encontrar múltiplos projetos relevantes, resuma os 3 principais
-5. Cite as fontes de informação
-6. Mantenha tom profissional mas amigável
-7. Se a pergunta não está relacionada a legislação, redirecione gentilmente
-
-⚙️ INFORMAÇÕES DO USUÁRIO:"""
+⚙️ INFORMAÇÕES DO USUÁRIO:
+"""
+        base_prompt += additional_prompt
         
         # Adicionar preferências do usuário se disponíveis
         if request.user_preferences:
@@ -221,7 +233,7 @@ class AgentService:
         
         return base_prompt
     
-    def _get_auxiliary_text(self, should_send_audio: bool) -> Optional[str]:
+    def _extract_auxiliary_text(self, response_output) -> Optional[str]:
         """
         Retorna texto auxiliar para TTS se necessário
         
@@ -231,13 +243,14 @@ class AgentService:
         Returns:
             Texto auxiliar ou None
         """
-        if not should_send_audio:
-            return None
+        if "content" in dir(response_output):
+            content = response_output.content
+            if hasattr(content, 'auxiliary_text'):
+                return content.auxiliary_text
+            elif isinstance(content, dict):
+                return content.get('auxiliary_text')
         
-        return (
-            "📢 Esta resposta foi gerada pelo assistente de IA do DevsImpacto. "
-            "Para mais informações, visite e-Cidadania.camara.leg.br"
-        )
+        return None
     
     def _should_send_audio(self, request: AgentRequest, response_output) -> bool:
         """
@@ -249,22 +262,20 @@ class AgentService:
         Returns:
             True se deve enviar áudio
         """
-        if "should_send_audio" in dir(response_output):
-            if response_output.should_send_audio:
-                return True
-        
-        if "content" in dir(response_output):
-            if "should_send_audio" in response_output.content.lower():
-                return True
-
-        # Lógica 1: Se a mensagem original foi áudio
-        if request.message_type == "audio":
-            return True
-        
-        # Lógica 2: Se o usuário tem preferência de áudio
         if request.user_preferences:
             if request.user_preferences.get("prefer_audio"):
                 return True
+
+        if hasattr(response_output, 'content'):
+            content = response_output.content
+            if hasattr(content, 'should_send_audio'):
+                return content.should_send_audio
+            elif isinstance(content, dict):
+                return content.get('should_send_audio', False)
+
+        if request.message_type == "audio":
+            return True
+        
         
         return False
 

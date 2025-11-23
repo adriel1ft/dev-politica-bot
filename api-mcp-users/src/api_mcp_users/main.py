@@ -10,7 +10,8 @@ from .tools import (
     obter_ou_criar_usuario,
     atualizar_perfil_usuario,
     obter_preferencia_audio,
-    listar_topicos_interesse
+    listar_topicos_interesse,
+    registrar_opiniao
 )
 from .config import settings
 
@@ -30,6 +31,7 @@ mcp.tool()(obter_ou_criar_usuario)
 mcp.tool()(atualizar_perfil_usuario)
 mcp.tool()(obter_preferencia_audio)
 mcp.tool()(listar_topicos_interesse)
+mcp.tool()(registrar_opiniao)
 
 
 def main() -> None:

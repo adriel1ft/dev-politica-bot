@@ -49,3 +49,25 @@ class SessionDB:
             "last_activity": self.last_activity,
             "is_active": self.is_active,
         }
+    
+class OpinionDB:
+    """Modelo de opinião para MongoDB"""
+    
+    def __init__(self, opinion_id: str, user_id: str, texto: str, 
+                 topicos: List[str], sentimento: str):
+        self.opinion_id = opinion_id
+        self.user_id = user_id
+        self.texto = texto
+        self.topicos = topicos
+        self.sentimento = sentimento
+        self.created_at = datetime.utcnow()
+    
+    def to_dict(self):
+        return {
+            "opinion_id": self.opinion_id,
+            "user_id": self.user_id,
+            "texto": self.texto,
+            "topicos": self.topicos,
+            "sentimento": self.sentimento,
+            "created_at": self.created_at,
+        }

@@ -74,10 +74,10 @@ localstack start -d
 Com o ambiente ativado e o LocalStack rodando, inicie a API com o Uvicorn:
 
 ```bash
-uvicorn api_audio_processing.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn api_audio_processing.main:app --host 0.0.0.0 --port 5001 --reload
 ```
 
-A API estará disponível em `http://localhost:8001` e a documentação interativa (Swagger UI) em `http://localhost:8001/docs`.
+A API estará disponível em `http://localhost:5001` e a documentação interativa (Swagger UI) em `http://localhost:5001/docs`.
 
 ## Endpoints da API
 
@@ -88,7 +88,7 @@ Converte texto em áudio.
 **Exemplo de requisição com `curl`:**
 
 ```bash
-curl -X POST "http://localhost:8001/text-to-speech" \
+curl -X POST "http://localhost:5001/text-to-speech" \
 -H "Content-Type: application/json" \
 -d '{
   "text": "Olá, mundo! Este é um teste de conversão de texto para áudio.",
@@ -115,7 +115,7 @@ Transcreve um arquivo de áudio para texto.
 **Exemplo de requisição com `curl`:**
 
 ```bash
-curl -X POST "http://localhost:8001/speech-to-text" \
+curl -X POST "http://localhost:5001/speech-to-text" \
 -F "file=@/caminho/para/seu/audio.mp3"
 ```
 

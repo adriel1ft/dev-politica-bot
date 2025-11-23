@@ -1,0 +1,19 @@
+# Dockerfile base para APIs Python
+FROM python:3.10-slim
+
+# Instala dependências do sistema
+RUN apt-get update && apt-get install -y curl build-essential && rm -rf /var/lib/apt/lists/*
+
+
+# Instala o uv (gerenciador de ambientes e dependências ultrarrápido)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+	&& cp /root/.local/bin/uv /usr/local/bin/uv
+
+# Define diretório de trabalho
+WORKDIR /app
+
+# Garante que o uv está no PATH global
+ENV PATH="/usr/local/bin:$PATH"
+
+# Copia entrypoint genérico (pode ser sobrescrito)
+CMD ["python3"]

@@ -170,7 +170,7 @@ Captura mensagens recebidas e as encaminha para o orquestrador.
 
 ```javascript
 const handlers = new MessageHandlers({
-  orchestratorUrl: "http://localhost:5000/process-message",
+  orchestratorUrl: "http://localhost:8002/process-message",
 });
 handlers.setup(client);
 ```

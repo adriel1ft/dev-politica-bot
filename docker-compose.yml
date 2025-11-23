@@ -1,0 +1,116 @@
+version: '3.9'
+
+services:
+  api-agents-whatsapp:
+    build:
+      context: ./api-agents-whatsapp
+      dockerfile: Dockerfile
+    image: dev-politica-bot-agents:latest
+    env_file:
+      - .env.global
+    environment:
+      MCP_PROJETOS_LEI_URL: http://api-mcp-projetos-lei:8000/mcp
+      API_PORT: 5000
+      API_HOST: 0.0.0.0
+      DEBUG: 'false'
+      AGENT_MODEL: gpt-4o-mini
+      AGENT_TEMPERATURE: 0.7
+    ports:
+      - "5000:5000"
+    depends_on:
+      - orchestrator
+      - api-mcp-projetos-lei
+      - api-audio-processing
+      - localstack
+
+  api-audio-processing:
+    build:
+      context: ./api-audio-processing
+      dockerfile: Dockerfile
+    image: dev-politica-bot-audio:latest
+    env_file:
+      - .env.global
+    environment:
+      OPENAI_TTS_MODEL: tts-1
+      OPENAI_TTS_VOICE: alloy
+      OPENAI_WHISPER_MODEL: whisper-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      S3_ENDPOINT_URL: http://localstack:4566
+      S3_BUCKET_NAME: audio-processing
+      API_PORT: 8001
+    ports:
+      - "8001:8001"
+
+  api-mcp-projetos-lei:
+    build:
+      context: ./api-mcp-projetos-lei
+      dockerfile: Dockerfile
+    image: dev-politica-bot-mcp:latest
+    env_file:
+      - .env.global
+    environment:
+      MCP_SERVER_PORT: 8000
+      SCRAPING_TIMEOUT: 30
+      SCRAPING_HEADLESS: 'true'
+      CACHE_DIR: ./data/cache
+      CACHE_TTL: 3600
+    ports:
+      - "8000:8000"
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    image: dev-politica-bot-orchestrator:latest
+    env_file:
+      - .env.global
+    environment:
+      API_PORT: 5000
+      API_HOST: 0.0.0.0
+      DEBUG: 'false'
+      MONGODB_URL: mongodb://localhost:27017
+      MONGODB_DB: devsimpacto
+      WHATSAPP_SERVICE_URL: http://whatsapp-service:5002
+      AUDIO_API_URL: http://api-audio-processing:8001
+      AGENT_API_URL: http://api-agents-whatsapp:5000
+      MCP_USERS_URL: http://api-mcp-projetos-lei:8000/mcp
+      MESSAGE_BATCH_TIMEOUT_SECONDS: 30
+      MESSAGE_INTER_TIMEOUT_SECONDS: 15
+    ports:
+      - "5001:5000"
+    # Removido depends_on para evitar ciclo de dependência
+
+  whatsapp-service:
+    build:
+      context: ./whatsapp-service
+      dockerfile: Dockerfile
+    image: dev-politica-bot-whatsapp:latest
+    env_file:
+      - .env.global
+    environment:
+      WHATSAPP_SESSION_NAME: main-session
+      WHATSAPP_HEADLESS: 'true'
+      WHATSAPP_RATE_LIMIT_DELAY: 8000
+      MESSAGE_WEBHOOK_URL: http://orchestrator:5000/webhook/messages
+      WEBHOOK_PORT: 5002
+      WEBHOOK_ENABLED: 'true'
+      ORCHESTRATOR_API_URL: http://orchestrator:5000
+      LOG_LEVEL: info
+    ports:
+      - "3001:3001"
+    depends_on:
+      - orchestrator
+    volumes:
+      - ./whatsapp-service/.wwebjs_auth:/app/.wwebjs_auth
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+    volumes:
+      - ./localstack:/var/lib/localstack
+  
